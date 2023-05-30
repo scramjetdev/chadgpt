@@ -1,7 +1,11 @@
 import 'dart:convert';
+import 'dart:html';
 
 import 'package:chadgpt/constant.dart';
+import 'package:chadgpt/informations.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:http/http.dart' as http;
 import 'model.dart';
 
@@ -15,8 +19,8 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
-      home: ChatPage(),
       debugShowCheckedModeBanner: false,
+      home: Informations(),
     );
   }
 }
@@ -89,22 +93,29 @@ class _ChatPageState extends State<ChatPage> {
                   visible: isLoading,
                   child: Center(
                     child: Padding(
-                      padding: EdgeInsets.all(8.0),
+                      padding: const EdgeInsets.all(8.0),
                       child: Row(
                         children: const [
                           Padding(
                             padding: EdgeInsets.all(8.0),
-                            child: Text("Giga chad is thinking", style: TextStyle(color: Colors.white, fontSize: 20),),
+                            child: Text("Giga chad is thinking", style: TextStyle(color: botbackgroundColor, fontSize: 20),),
                           ),
-                          CircularProgressIndicator(
-                            color: Colors.white,),
+                          SizedBox(
+                            height: 10,
+                            width: 10,
+                            child: CircularProgressIndicator(
+                              backgroundColor: backgroundColor,
+                              color: botbackgroundColor,
+                              strokeWidth: 4,
+                            ),
+                          ),
                         ],
                       ),
                     ),
                   ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(8.0),
+              Container(
+                padding: const EdgeInsets.all(12.0),
                 child: Row(
                   children: [
                     _buildInput(),
@@ -120,17 +131,24 @@ class _ChatPageState extends State<ChatPage> {
 
   Expanded _buildInput() {
     return Expanded(child: TextField(
-      textCapitalization: TextCapitalization.sentences,
+      keyboardType: TextInputType.multiline,
+      minLines: 1,
+      maxLines: 50,
+      textInputAction: TextInputAction.newline,
+      cursorColor: Colors.pink,
+      textCapitalization: TextCapitalization.none,
       style: const TextStyle(color: Colors.white),
       controller: _textController,
       decoration: const InputDecoration(
+        hintText: 'Entrer votre question',
+        hintStyle: TextStyle(color: backgroundColor),
         fillColor: botbackgroundColor,
         filled: true,
         border: InputBorder.none,
         focusedBorder: InputBorder.none,
         enabledBorder: InputBorder.none,
         errorBorder: InputBorder.none,
-        disabledBorder: InputBorder.none
+        disabledBorder: InputBorder.none,
       ),
     ));
   }
@@ -142,11 +160,11 @@ class _ChatPageState extends State<ChatPage> {
           color: botbackgroundColor,
           child: IconButton(icon: const Icon(Icons.send_rounded, color: Color.fromRGBO(142, 142, 160, 1),),
             onPressed: () {
+              String input = _textController.text;
               setState(() {
-                _messages.add(ChatMessage(text: _textController.text, chatMessageType: ChatMessageType.user));
+                _messages.add(ChatMessage(text: input, chatMessageType: ChatMessageType.user));
                 isLoading = true;
               });
-              var input = _textController.text;
               _textController.clear();
               Future.delayed(const Duration(milliseconds: 50)).then((value) => _scrollDown());
               generateResponse(input).then((value) {
@@ -192,6 +210,7 @@ class ChatMessageWidget extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       color: chatMessageType == ChatMessageType.bot ? botbackgroundColor: backgroundColor,
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           chatMessageType == ChatMessageType.bot
               ? Container(
@@ -200,19 +219,28 @@ class ChatMessageWidget extends StatelessWidget {
                 )
               : Container(
                   margin: const EdgeInsets.only(right: 16),
-                  child: const CircleAvatar(child: Icon(Icons.person)),
+                  child: const CircleAvatar(backgroundColor: botbackgroundColor,child: Icon(Icons.person, color: backgroundColor,),),
                 ),
           Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8.0),
-                    decoration: const BoxDecoration(borderRadius: BorderRadius.all(Radius.circular(8))),
-                    child: Text(text, style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white),),
-                  )
-                ],
-              ),
+              child: GestureDetector(
+                onDoubleTap: () {
+                  Clipboard.setData(ClipboardData(text: text));
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(8.0),
+                  decoration: const BoxDecoration(borderRadius: BorderRadius.all(Radius.circular(8))),
+                  child: MarkdownBody(
+                      data: text,
+                      selectable: true,
+                      styleSheet: MarkdownStyleSheet(
+                          p: const TextStyle(color: Colors.white),
+                          codeblockDecoration: const BoxDecoration(color: Colors.black54),
+                          code: const TextStyle(backgroundColor: Colors.transparent, color: Colors.grey)
+                      ),
+
+                  ),
+                ),
+              )
           )
         ],
       ),
